@@ -1,6 +1,5 @@
 import streamlit as st
 import plotly.express as px
-pip install plotly
 import pandas as pd
 st.markdown(
     """
