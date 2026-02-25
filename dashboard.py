@@ -1,5 +1,17 @@
 import streamlit as st
+import plotly.express as px
+pip install plotly
 import pandas as pd
+st.markdown(
+    """
+    <style>
+    .metric-container {
+        text-align: center;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 st.set_page_config(page_title="Dashboard Robos Automotores", layout="wide")
 
@@ -42,3 +54,70 @@ st.bar_chart(df_filtrado["titular_genero"].value_counts())
 st.subheader("📅 Evolución Temporal")
 serie = df_filtrado.groupby(df_filtrado["tramite_fecha"].dt.date).size()
 st.line_chart(serie)
+st.subheader("🗺 Distribución Geográfica (Visualización Aproximada)")
+
+# Coordenadas aproximadas de provincias principales
+coordenadas = {
+    "Buenos Aires": (-34.6, -58.4),
+    "Ciudad Autónoma de Buenos Aires": (-34.6, -58.4),
+    "Córdoba": (-31.4, -64.2),
+    "Santa Fe": (-31.6, -60.7),
+    "Mendoza": (-32.9, -68.8),
+}
+
+map_df = (
+    df.groupby("registro_seccional_provincia")
+    .size()
+    .reset_index(name="cantidad")
+)
+
+map_df["lat"] = map_df["registro_seccional_provincia"].map(lambda x: coordenadas.get(x, (None, None))[0])
+map_df["lon"] = map_df["registro_seccional_provincia"].map(lambda x: coordenadas.get(x, (None, None))[1])
+
+map_df = map_df.dropna()
+
+fig = px.scatter_mapbox(
+    map_df,
+    lat="lat",
+    lon="lon",
+    size="cantidad",
+    hover_name="registro_seccional_provincia",
+    zoom=4,
+)
+
+fig.update_layout(mapbox_style="open-street-map")
+st.plotly_chart(fig)
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score
+st.subheader("🤖 Modelo Predictivo - Probabilidad de Recupero")
+
+modelo_df = df.copy()
+
+modelo_df["objetivo"] = modelo_df["tramite_tipo"].apply(
+    lambda x: 1 if "RECUPERO" in x else 0
+)
+
+features = ["automotor_marca_descripcion", "registro_seccional_provincia", "edad"]
+
+modelo_df = modelo_df[features + ["objetivo"]].dropna()
+
+le = LabelEncoder()
+
+for col in ["automotor_marca_descripcion", "registro_seccional_provincia"]:
+    modelo_df[col] = le.fit_transform(modelo_df[col])
+
+X = modelo_df[features]
+y = modelo_df["objetivo"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+modelo = RandomForestClassifier()
+modelo.fit(X_train, y_train)
+
+pred = modelo.predict(X_test)
+
+accuracy = accuracy_score(y_test, pred)
+
+st.metric("Precisión del modelo", f"{accuracy:.2f}")
