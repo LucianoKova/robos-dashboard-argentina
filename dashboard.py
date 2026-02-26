@@ -271,17 +271,34 @@ marca_stats["tasa_recupero_%"] = (
 marca_stats = marca_stats[marca_stats["robos"] > 20]
 marca_stats = marca_stats.sort_values("tasa_recupero_%", ascending=False)
 
+top10 = marca_stats.head(10).reset_index()
+
 fig_tasa = px.bar(
-    marca_stats.head(10),
-    x=marca_stats.head(10).index,
+    top10,
+    x="automotor_marca_descripcion",
     y="tasa_recupero_%",
     color="tasa_recupero_%",
     color_continuous_scale="viridis",
+    text=top10["tasa_recupero_%"].round(2)  # 👈 muestra valor arriba
 )
 
+# Layout premium
 fig_tasa.update_layout(
     xaxis_title="Marca",
     yaxis_title="Tasa de Recupero (%)",
+    coloraxis_showscale=False,
+    template="plotly_dark",
+    transition_duration=800  # 👈 animación suave
 )
+
+# Formato etiquetas
+fig_tasa.update_traces(
+    texttemplate="%{text:.2f}%",
+    textposition="outside",
+    hovertemplate="<b>Marca:</b> %{x}<br>" +
+                  "<b>Tasa de recupero:</b> %{y:.2f}%<extra></extra>"
+)
+
+fig_tasa.update_yaxes(range=[0, top10["tasa_recupero_%"].max() * 1.2])
 
 st.plotly_chart(fig_tasa, use_container_width=True)
